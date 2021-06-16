@@ -1,5 +1,5 @@
 # Meterstick
-## Benchmark tool for cloud deployed Minecraft-like games, BSc project VU Amsterdam 2021
+## Benchmark tool for cloud deployed Minecraft-like games
 
 ### Config
 
