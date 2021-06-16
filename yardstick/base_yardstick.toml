@@ -1,0 +1,11 @@
+[experiment.params]
+port = "7000"
+spawnAnchor=true
+singleStandStill=true
+sendPing=true
+pingInterval=1
+id = 0
+nodes = 1
+joininterval = 1
+numbotsperjoin = 1
+seed = 42

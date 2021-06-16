@@ -1,0 +1,1 @@
+ java -XX:+FlightRecorder -XX:StartFlightRecording=duration=60s,filename=myrecording.jfr,delay=30s,maxage=0,maxsize=0 -XX:FlightRecorderOptions=stackdepth=80 -XX:+PreserveFramePointer -Xmx1024M -Xms1024M -jar server.jar nogui 

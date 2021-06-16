@@ -1,0 +1,14 @@
+{
+  "minecraft:adventure/adventuring_time": {
+    "criteria": {
+      "minecraft:forest": "2021-05-08 10:24:39 +0200",
+      "minecraft:mountains": "2021-05-08 10:25:37 +0200",
+      "minecraft:jungle": "2021-05-08 10:25:12 +0200",
+      "minecraft:jungle_hills": "2021-05-08 10:25:57 +0200",
+      "minecraft:river": "2021-05-08 10:24:53 +0200",
+      "minecraft:plains": "2021-05-08 10:25:06 +0200"
+    },
+    "done": false
+  },
+  "DataVersion": 2584
+}
