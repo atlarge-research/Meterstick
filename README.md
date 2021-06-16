@@ -26,6 +26,10 @@
 ### Run
 - Run start_experiment.sh
 
+### Plotting
+- After collecting results, run the python files in the plotting_tools folder
+    - Multi plot may require renaming results folders and moving the plotting file
+
 ### Tools used
 - See [this link](https://github.com/atlarge-research/yardstick/commit/066a2b258a6c6f9c333a386751154d05c763b6d4) for relevant branch of the Yardstick player emulation tool 
 - [PSUtil project](https://pypi.org/project/psutil/)
