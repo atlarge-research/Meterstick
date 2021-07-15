@@ -24,6 +24,7 @@ class MC_Receive:
         self.sys_sampling_freq = 0.5 # In seconds
         self.results_dir="results"
         self.server="None"
+        self.world_name="None"
         self.jmx_url="net.minecraft.server:type\=Server"
         self.server_dir=""
         self.current_jmx_port=args.jmxport_start
@@ -38,6 +39,10 @@ class MC_Receive:
         if not os.path.isdir(self.results_dir):
             os.mkdir(self.results_dir)
 
+    def copyWorld(self):
+        subprocess.check_output(f'cp -Tr worlds/{self.world_name} {self.server_dir.name}/world',shell=True)
+
+
     # Clear previous server files, copy server to correct temp location
     def copyServer(self):
         self.server_dir = tempfile.TemporaryDirectory()
@@ -47,7 +52,7 @@ class MC_Receive:
     # Start server in correct working directory
     def startServer(self):
         currentDirectory = os.getcwd()
-        mc_process = subprocess.Popen(f'cd {self.server_dir.name} ; ./run.sh {currentDirectory}/{self.results_dir}/{self.iterationCounter}/mc_out.txt -{self.args.ram} {self.current_jmx_port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+        mc_process = subprocess.Popen(f'cd {self.server_dir.name} ; ./run.sh {currentDirectory}/{self.results_dir}/{self.iterationCounter}/{self.world_name}/mc_out.txt -{self.args.ram} {self.current_jmx_port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
         mc_process_out, mc_process_err = mc_process.communicate()
         self.mc_pid = int(mc_process_out.decode())
         self.log(f"MCPID is {self.mc_pid}")
@@ -61,9 +66,9 @@ class MC_Receive:
 
     # Connect JMX profiler to running server
     def connectJMX(self):
-        log_file = open(f'{self.results_dir}/{self.iterationCounter}/jmx_out.txt','x')
+        log_file = open(f'{self.results_dir}/{self.iterationCounter}/{self.world_name}/jmx_out.txt','x')
         log_file.flush()
-        jmx_process = subprocess.Popen(f'java -jar jmx_client.jar {self.jmx_url} {self.current_jmx_port} {self.results_dir}/{self.iterationCounter} &', stdout=log_file, stderr=log_file, shell=True, preexec_fn=os.setsid)
+        jmx_process = subprocess.Popen(f'java -jar jmx_client.jar {self.jmx_url} {self.current_jmx_port} {self.results_dir}/{self.iterationCounter}/{self.world_name} &', stdout=log_file, stderr=log_file, shell=True, preexec_fn=os.setsid)
         self.jmx_pid = jmx_process.pid
         self.log(f"JMXPID is {self.jmx_pid}")
         if not self.check_pid(self.jmx_pid):
@@ -76,9 +81,9 @@ class MC_Receive:
 
     # Connect system metric tool to running server
     def connectSys(self):
-        log_file = open(f'{self.results_dir}/{self.iterationCounter}/sys_out.txt','x')
+        log_file = open(f'{self.results_dir}/{self.iterationCounter}/{self.world_name}/sys_out.txt','x')
         log_file.flush()
-        sys_process = subprocess.Popen(f'python3 sys_perf.py {self.mc_pid} {self.sys_sampling_freq} {self.results_dir}/{self.iterationCounter} &', stdout=log_file, stderr=log_file, shell=True, preexec_fn=os.setsid)
+        sys_process = subprocess.Popen(f'python3 sys_perf.py {self.mc_pid} {self.sys_sampling_freq} {self.results_dir}/{self.iterationCounter}/{self.world_name} &', stdout=log_file, stderr=log_file, shell=True, preexec_fn=os.setsid)
         self.sys_pid = sys_process.pid
         if not self.check_pid(self.sys_pid):
             # Process not running
@@ -145,20 +150,34 @@ class MC_Receive:
                     self.jmx_url = jmx_url
                     connection.send(b"ok")
                 elif word[:5] == "iter:":
-                    iter = int(word[5:])
-                    self.log(f"Setting iteration to {iter}")
-                    self.iterationCounter = iter
-                    connection.send(b"ok")
-                elif word == "initialize":
-                    self.iterationCounter+=1
-                    self.log("Starting server...")
+                    iteration = int(word[5:])
+                    self.log(f"Setting iteration to {iteration}")
+                    self.iterationCounter = iteration
 
                     if os.path.isdir(f'{self.results_dir}/{self.iterationCounter}'):
                         subprocess.check_output(f'rm -rf {self.results_dir}/{self.iterationCounter}', shell=True)
                         time.sleep(1)
                     os.mkdir(f'{self.results_dir}/{self.iterationCounter}')
-                    
+
+                    connection.send(b"ok")
+                elif word[:10] == "set_world:":
+                    world_name = word[10:]
+                    self.log("Setting world to "+world_name)
+                    self.world_name = world_name
+
+                    if os.path.isdir(f'{self.results_dir}/{self.iterationCounter}/{self.world_name}'):
+                        subprocess.check_output(f'rm -rf {self.results_dir}/{self.iterationCounter}/{self.world_name}', shell=True)
+                        time.sleep(1)
+                    os.mkdir(f'{self.results_dir}/{self.iterationCounter}/{self.world_name}')
+
+
+                    connection.send(b"ok")
+                elif word == "initialize":
+                    self.log("Starting server...")
+
                     self.copyServer()
+                    self.copyWorld()
+
                     if not self.startServer():
                         connection.send(b"err: server failed to start")
                     else:

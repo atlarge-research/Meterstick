@@ -18,7 +18,8 @@ class YS_Receive:
         self.iterationCounter = -1
         self.ys_pid = -1
         self.results_dir="results"
-        self.server="Vanilla"
+        self.server="None"
+        self.world_name="None"
         self.id=args.yardstick_id
 
     def log(self, message):
@@ -45,7 +46,7 @@ class YS_Receive:
 
     # Start player emulat subprocess
     def startYardstick(self):
-        log_file = open(f'{self.results_dir}/{self.iterationCounter}/ys_out.txt','x')
+        log_file = open(f'{self.results_dir}/{self.iterationCounter}/{self.world_name}/ys_out.txt','x')
         log_file.flush()
         ys_process= subprocess.Popen('java -jar yardstick.jar &',stdout=log_file, stderr=log_file, shell=True)
         self.ys_pid = ys_process.pid
@@ -56,9 +57,9 @@ class YS_Receive:
         curr_player = 0
         for player_bin in os.listdir('./workload'):
             if player_bin.__contains__("still"):
-                subprocess.check_output(f'java -jar yardstick.jar --csvdump --input workload/{player_bin} --output {self.results_dir}/{self.iterationCounter}/{self.id}_still_yardstick.csv', shell=True)
+                subprocess.check_output(f'java -jar yardstick.jar --csvdump --input workload/{player_bin} --output {self.results_dir}/{self.iterationCounter}/{self.world_name}/{self.id}_still_yardstick.csv', shell=True)
             else:
-                subprocess.check_output(f'java -jar yardstick.jar --csvdump --input workload/{player_bin} --output {self.results_dir}/{self.iterationCounter}/{self.id}_{curr_player}_yardstick.csv', shell=True)
+                subprocess.check_output(f'java -jar yardstick.jar --csvdump --input workload/{player_bin} --output {self.results_dir}/{self.iterationCounter}/{self.world_name}/{self.id}_{curr_player}_yardstick.csv', shell=True)
             curr_player += 1
             os.remove(f'./workload/{player_bin}')
 
@@ -80,14 +81,18 @@ class YS_Receive:
                     self.iterationCounter = -1
                     connection.send(b"ok")
                 elif word[:5] == "iter:":
-                    iter = int(word[5:])
-                    self.log(f"Setting iteration to {iter}")
-                    self.iterationCounter = iter
+                    iteration = int(word[5:])
+                    self.log(f"Setting iteration to {iteration}")
+                    self.iterationCounter = iteration
+                    connection.send(b"ok")
+                elif word[:10] == "set_world:":
+                    world_name = word[10:]
+                    self.log(f"Setting world to {world_name}")
+                    self.world_name = world_name
                     connection.send(b"ok")
                 elif word == "connect":
-                    self.iterationCounter+=1
                     self.log("Starting Yardstick...")
-                    os.mkdir(f'./{self.results_dir}/{self.iterationCounter}')
+                    os.mkdir(f'./{self.results_dir}/{self.iterationCounter}/{self.world_name}')
                     self.startYardstick()
                     connection.send(b"ok")
                 elif word == "convert":

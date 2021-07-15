@@ -19,57 +19,64 @@ logging.basicConfig(format='%(asctime)s :: %(message)s',level=logging.DEBUG)
 def experimentLoop():
     current_server = 0
     for server_name in args.servers:
-        logging.info("Starting Experiment with %s",server_name)
+        logging.info("Starting Experiments with %s",server_name)
         sendMC("set_server:"+server_name, True)
         sendYS("set_server:"+server_name, True)
         sendMC("set_jmx:"+args.jmx_urls[current_server], True)
-        iterationCounter = 0
-        
-        if args.iteration_start != 0:
-            # Used during experiment recovery, -1 because incremented during setup
-            iterationCounter = args.iteration_start
-            sendMC(f"iter:{args.iteration_start - 1}", True)
-            sendYS(f"iter:{args.iteration_start - 1}", True)
-            args.iteration_start = 0
 
-        while iterationCounter < args.iterations:
+
+        iterationCounter = args.iteration_start
+
+
+        while iterationCounter < (args.iteration_start + args.iterations):
             # Send initialization to all nodes, wait for server to start up
             logging.info("  Starting iteration %s",iterationCounter)
-            logging.info("      Initializing MC")
-            sendMC("initialize", True)
-            time.sleep(35) # wait for server to start
+            sendMC(f"iter:{iterationCounter}")
+            sendYS(f"iter:{iterationCounter}")
 
-            logging.info("      Starting YS")
-            sendYS("connect", True) 
+            for world_name in args.worlds:
+                logging.info("      Using world: %s",world_name)
 
-            logging.info("      Starting logging")
-            sendMC("log_start", True)
+                logging.info("         Setting world")
+                sendMC("set_world:"+server_name, True)\
+                sendYS("set_world:"+server_name, True)
 
-            # Hack-y fix for Azure killing TCP connections that don't send data for extended amounts of time
-            if args.duration >= 200:
-                duration_left = args.duration + 5
-                while duration_left > 0:
-                    sleep_amount = 120 if duration_left >= 120 else duration_left
-                    time.sleep(sleep_amount)
-                    logging.info("      Sending keep alives")
-                    sendMC("keep_alive", True)
-                    sendYS("keep_alive", True)
-                    duration_left -= 120
-            else:
-                time.sleep(args.duration + 5) # Wait for ys to finish
+                logging.info("         Initializing MC")
+                sendMC("initialize", True)
+                time.sleep(35) # wait for server to start
 
-            logging.info("      Stopping logging")
-            sendMC("log_stop", True)
+                logging.info("         Starting YS")
+                sendYS("connect", True) 
+
+                logging.info("         Starting logging")
+                sendMC("log_start", True)
+
+                # Hack-y fix for Azure killing TCP connections that don't send data for extended amounts of time
+                if args.duration >= 200:
+                    duration_left = args.duration + 5
+                    while duration_left > 0:
+                        sleep_amount = 120 if duration_left >= 120 else duration_left
+                        time.sleep(sleep_amount)
+                        logging.info("         Sending keep alives")
+                        sendMC("keep_alive", True)
+                        sendYS("keep_alive", True)
+                        duration_left -= 120
+                else:
+                    time.sleep(args.duration + 5) # Wait for ys to finish
+
+                logging.info("         Stopping logging")
+                sendMC("log_stop", True)
             
-            if args.workload:
-                logging.info("      Converting Yardstick metrics")
-                sendYS("convert", True)
+                if args.workload:
+                    logging.info("         Converting Yardstick metrics")
+                    sendYS("convert", True)
 
-            logging.info("      Stopping MC")
-            sendMC("stop_server", True)
+                logging.info("         Stopping MC")
+                sendMC("stop_server", True)
+                
+                time.sleep(5) # wait for port to (hopefully) be free again
 
             iterationCounter += 1
-            time.sleep(5) # wait for port to (hopefully) be free again
         current_server+=1
     logging.info("Experiment finished.")
 
@@ -147,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument('server_node_ip')
     parser.add_argument('-yardstick_ips', '-y', nargs='+', required=True)
     parser.add_argument('-servers', '-s', nargs='+', required=True)
+    parser.add_argument('-worlds', '-W', nargs='+', required=True)
     parser.add_argument('-jmx_urls', '-ju', nargs='+', required=True)
     parser.add_argument('-workload', '-w', default=True)
     parser.add_argument('-controlport', '-c',  type=int, default=25555)

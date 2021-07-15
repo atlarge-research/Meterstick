@@ -19,12 +19,13 @@
 - Add the run.sh script to the server folder.
     - If necessary, change the name of the jar file it runs.
 
-### Specifying World
+### Specifying Worlds
 - Copy world folder MC/worlds
-- Add world name to config.cfg
+- Add world name to worlds list in config.cfg
 
 ### Run
 - Run start_experiment.sh
+    - Total runtime in seconds will be around (duration + 45) * iterations * number of servers * number of worlds
 
 ### Plotting
 - After collecting results, run the python files in the plotting_tools folder

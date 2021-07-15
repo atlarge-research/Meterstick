@@ -1,7 +1,7 @@
 source ./config.cfg
 
 # Comment this out if nodes not on DAS5!
-./das5_reservation.sh 2 1600
+./das5_reservation.sh 2 300
 
 # Read list of ips. First node is chosen as MC server.
 IPS=(`< ips`)
@@ -69,6 +69,7 @@ if [ "$resume" = true ]
                     do
                         last_iteration=$ite
                         curr_iter_dir="${curr_dir}/${ite}"
+                        # Insert check for world completeness
                         finished=`ls ${curr_iter_dir} 2>/dev/null | grep -E 'still|tick_log' | wc -l`
                         if [ "$finished" -lt "2" ];
                         then
@@ -111,13 +112,13 @@ if [ "$resume" = true ]
 
 fi
 
-echo "Copying world:${world} to server folders"
-server_folders=($(ls -d MC/servers/*/))
-for server_folder in "${server_folders[@]}"
-do
-    rm -rf $server_folder/world
-    cp -RT MC/worlds/${world} $server_folder/world > /dev/null
-done
+#echo "Copying world:${world} to server folders"
+#server_folders=($(ls -d MC/servers/*/))
+#for server_folder in "${server_folders[@]}"
+#do
+#    rm -rf $server_folder/world
+#    cp -RT MC/worlds/${world} $server_folder/world > /dev/null
+#done
 
 
 if [ "$already_copied" = false ]
@@ -157,7 +158,7 @@ done
 
 sleep 3
 # Run controller server
-python3 controller.py ${IPS[0]} -y ${IPS[@]:1} -s ${servers[@]} -ju ${jmx_urls[@]} -w ${collect_yardstick} -c ${controlport} -m ${mcport} -i ${iterations} -is ${iteration_start} -d ${adjusted_duration}
+python3 controller.py ${IPS[0]} -y ${IPS[@]:1} -s ${servers[@]} -W ${worlds[@]} -ju ${jmx_urls[@]} -w ${collect_yardstick} -c ${controlport} -m ${mcport} -i ${iterations} -is ${iteration_start} -d ${adjusted_duration}
 
 if [ "$resume" = false ] 
 then
