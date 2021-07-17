@@ -9,6 +9,7 @@ import socket
 import logging
 import signal
 import tempfile
+from mcrcon import MCRcon
 
 # Minecraft control client, receives control operations from control server during experiment. 
 
@@ -91,6 +92,12 @@ class MC_Receive:
             return False
         else:
             return True
+    
+    # Uses RCON protocol to send control messages to server, defaults port to 25575
+    def sendRCON(self, message):
+        with MCRcon("127.0.0.1", "Meterstick") as mcr:
+            resp = mcr.command(f"/{message}")
+            self.log(f"RCON response: {resp}")
 
         
     def stopServer(self):
@@ -113,10 +120,13 @@ class MC_Receive:
         res2 = self.check_pid(self.jmx_pid)
         if res2:
             os.killpg(os.getpgid(self.jmx_pid), signal.SIGTERM)
-        if res1 and res2:
-            return True
-        else:
-            return False
+        return res1 and res2
+        # Stop debug profiling? 
+        # if self.args.debug_profile != 0 :
+            # self.sendRCON("debug stop")
+            # May have to manually collect the results from the working directory to the results dir
+            # subprocess.check_output(f'cp -Tr {self.server_dir.name}/debug {self.results_dir}/{self.iterationCounter}/{self.world_name}',shell=True)
+
 
     # 'pings' a pid for existence
     def check_pid(self, pid):        
@@ -170,7 +180,6 @@ class MC_Receive:
                         time.sleep(1)
                     os.mkdir(f'{self.results_dir}/{self.iterationCounter}/{self.world_name}')
 
-
                     connection.send(b"ok")
                 elif word == "initialize":
                     self.log("Starting server...")
@@ -192,6 +201,11 @@ class MC_Receive:
                         connection.send(b"err: sys metrics failed to start")
                     if res1 and res2:
                         connection.send(b"ok")
+                    
+                    # Start debug profiling?
+                    # if self.args.debug_profile != 0 :
+                        # self.sendRCON("debug start")
+                    
                 elif word == "log_stop":
                     self.log("Stopping metric collection...")
                     if not self.stopMetricSampling():
@@ -222,6 +236,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-controlport', '-c', type=int, default=25555)
     parser.add_argument('-mcport', '-m',  type=int, default=25565)
+    parser.add_argument('-debug_profile', '-d', type=int, default=0)
     parser.add_argument('-jmxport_start', '-js',  type=int, default=25585)
     parser.add_argument('-jmxport_end', '-je',  type=int, default=25635)
     parser.add_argument('-ram')

@@ -31,15 +31,15 @@ def experimentLoop():
         while iterationCounter < (args.iteration_start + args.iterations):
             # Send initialization to all nodes, wait for server to start up
             logging.info("  Starting iteration %s",iterationCounter)
-            sendMC(f"iter:{iterationCounter}")
-            sendYS(f"iter:{iterationCounter}")
+            sendMC(f"iter:{iterationCounter}", True)
+            sendYS(f"iter:{iterationCounter}", True)
 
             for world_name in args.worlds:
                 logging.info("      Using world: %s",world_name)
 
                 logging.info("         Setting world")
-                sendMC("set_world:"+server_name, True)\
-                sendYS("set_world:"+server_name, True)
+                sendMC(f"set_world:{world_name}", True)
+                sendYS(f"set_world:{world_name}", True)
 
                 logging.info("         Initializing MC")
                 sendMC("initialize", True)

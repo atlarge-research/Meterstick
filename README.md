@@ -6,6 +6,7 @@
 - Specify experiment and practical parameters in config.cfg 
 - Specify node IPs in ips
     - First IP runs MC server
+        - Node running MC must have [PSUtil](https://pypi.org/project/psutil/) and [MCRcon](https://pypi.org/project/mcrcon/) installed through pip!
     - All following nodes run yardstick player emulation
 - Add necessary SSL keys for access to those IPs in keys folder
     - Ensure these are listed in config.cfg
@@ -18,6 +19,7 @@
         - If unknown, check with jconsole or similar tool
 - Add the run.sh script to the server folder.
     - If necessary, change the name of the jar file it runs.
+- Ensure the server.properties file allows offline connections and RCON support.
 
 ### Specifying Worlds
 - Copy world folder MC/worlds

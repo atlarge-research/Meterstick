@@ -84,15 +84,20 @@ class YS_Receive:
                     iteration = int(word[5:])
                     self.log(f"Setting iteration to {iteration}")
                     self.iterationCounter = iteration
+
+                    os.mkdir(f'./{self.results_dir}/{self.iterationCounter}')
+
                     connection.send(b"ok")
                 elif word[:10] == "set_world:":
                     world_name = word[10:]
                     self.log(f"Setting world to {world_name}")
                     self.world_name = world_name
+                    
+                    os.mkdir(f'./{self.results_dir}/{self.iterationCounter}/{self.world_name}')
+
                     connection.send(b"ok")
                 elif word == "connect":
                     self.log("Starting Yardstick...")
-                    os.mkdir(f'./{self.results_dir}/{self.iterationCounter}/{self.world_name}')
                     self.startYardstick()
                     connection.send(b"ok")
                 elif word == "convert":

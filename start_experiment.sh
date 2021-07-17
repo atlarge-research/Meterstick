@@ -141,7 +141,7 @@ fi
 # Run MC controllers through ssh
 echo -n "Activating MC controller on "
 echo ${IPS[0]}
-ssh $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; python3 mc_receive.py -c ${controlport} -m ${mcport} -js ${jmx_port_start} -je ${jmx_port_stop} -ram ${ram} > results/mc_receive_out.txt 2>&1 &"
+ssh $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; python3 mc_receive.py -c ${controlport} -m ${mcport} -d ${debug_profile} -js ${jmx_port_start} -je ${jmx_port_stop} -ram ${ram} > results/mc_receive_out.txt 2>&1 &"
 
 # About 1 second join time per player, adjust for this
 adjusted_duration=$(($duration + $num_players))
