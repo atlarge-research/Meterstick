@@ -96,7 +96,7 @@ class MC_Receive:
     # Uses RCON protocol to send control messages to server, defaults port to 25575
     def sendRCON(self, message):
         with MCRcon("127.0.0.1", "Meterstick") as mcr:
-            resp = mcr.command(f"/{message}")
+            resp = mcr.command(f"{message}")
             self.log(f"RCON response: {resp}")
 
         
@@ -112,8 +112,13 @@ class MC_Receive:
         return killed
 
 
-    # Stops JMX and Sys
+    # Stops JMX, Sys and debug metrics
     def stopMetricSampling(self):
+        # Stop debug profiling
+        if self.args.debug_profile != 0:
+            self.sendRCON("debug stop")
+            subprocess.check_output(f'cp -Tr {self.server_dir.name}/debug {self.results_dir}/{self.iterationCounter}/{self.world_name}',shell=True)
+
         res1 = self.check_pid(self.sys_pid)
         if res1:
             os.killpg(os.getpgid(self.sys_pid), signal.SIGTERM)
@@ -121,12 +126,6 @@ class MC_Receive:
         if res2:
             os.killpg(os.getpgid(self.jmx_pid), signal.SIGTERM)
         return res1 and res2
-        # Stop debug profiling? 
-        # if self.args.debug_profile != 0 :
-            # self.sendRCON("debug stop")
-            # May have to manually collect the results from the working directory to the results dir
-            # subprocess.check_output(f'cp -Tr {self.server_dir.name}/debug {self.results_dir}/{self.iterationCounter}/{self.world_name}',shell=True)
-
 
     # 'pings' a pid for existence
     def check_pid(self, pid):        
@@ -196,15 +195,17 @@ class MC_Receive:
                     res1 = self.connectJMX()
                     if not res1:
                         connection.send(b"err: jmx failed to start")
+
+                    # Start debug profiling
+                    if self.args.debug_profile != 0 :
+                        self.sendRCON("debug start")
+                    
                     res2 = self.connectSys()
                     if not res2:
                         connection.send(b"err: sys metrics failed to start")
                     if res1 and res2:
                         connection.send(b"ok")
                     
-                    # Start debug profiling?
-                    # if self.args.debug_profile != 0 :
-                        # self.sendRCON("debug start")
                     
                 elif word == "log_stop":
                     self.log("Stopping metric collection...")

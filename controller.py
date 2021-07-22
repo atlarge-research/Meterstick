@@ -34,7 +34,13 @@ def experimentLoop():
             sendMC(f"iter:{iterationCounter}", True)
             sendYS(f"iter:{iterationCounter}", True)
 
-            for world_name in args.worlds:
+            iteration_worlds = args.worlds
+            # Used during resume functionality to skip finished worlds, only for the first iteration
+            if args.incomplete_worlds is not None:
+                iteration_worlds = args.incomplete_worlds
+                args.incomplete_worlds = None
+
+            for world_name in iteration_worlds:
                 logging.info("      Using world: %s",world_name)
 
                 logging.info("         Setting world")
@@ -155,6 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('-yardstick_ips', '-y', nargs='+', required=True)
     parser.add_argument('-servers', '-s', nargs='+', required=True)
     parser.add_argument('-worlds', '-W', nargs='+', required=True)
+    parser.add_argument('-incomplete_worlds', '-Wi', nargs='+', required=False)
     parser.add_argument('-jmx_urls', '-ju', nargs='+', required=True)
     parser.add_argument('-workload', '-w', default=True)
     parser.add_argument('-controlport', '-c',  type=int, default=25555)

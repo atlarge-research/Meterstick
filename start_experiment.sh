@@ -1,7 +1,7 @@
 source ./config.cfg
 
 # Comment this out if nodes not on DAS5!
-./das5_reservation.sh 2 300
+./das5_reservation.sh 2 900
 
 # Read list of ips. First node is chosen as MC server.
 IPS=(`< ips`)
@@ -51,15 +51,17 @@ if [ "$resume" = true ]
 
         servers_temp=$@
         jmx_urls_temp=$@
+        incomplete_worlds=$@
         i=0
         iteration_final=$(($iterations - 1))
 
+        # Check hierarchy: server -> iteration -> worlds
         for server in "${servers[@]}"
         do
             curr_dir="results/${server}"
             if [[ -d "${curr_dir}" ]] 
             then
-                # Only find the lowest iteration
+                # Only find the lowest incomplete iteration
                 if [ "$iteration_start" -eq 0 ]; 
                 then
 
@@ -69,9 +71,20 @@ if [ "$resume" = true ]
                     do
                         last_iteration=$ite
                         curr_iter_dir="${curr_dir}/${ite}"
-                        # Insert check for world completeness
-                        finished=`ls ${curr_iter_dir} 2>/dev/null | grep -E 'still|tick_log' | wc -l`
-                        if [ "$finished" -lt "2" ];
+                        incomplete_worlds=$@
+                        
+                        # Check if all worlds complete for this iteration
+                        for world in "${worlds[@]}"
+                        do
+                            world_finished=`ls ${curr_iter_dir}/${world} 2>/dev/null | grep -E 'still|tick_log' | wc -l`
+                            if [ "$world_finished" -lt "2" ];
+                            then
+                                incomplete_worlds+=($world)
+                            fi
+                        done
+
+                        # Check if all worlds in this iteration are complete
+                        if [ "${#incomplete_worlds[@]}" -gt "1" ];
                         then
                             # Server iterations not finished                        
                             iteration_start=$ite
@@ -83,15 +96,15 @@ if [ "$resume" = true ]
                         fi
                     done
 
-                    if [ "$last_iteration" -lt "$iteration_final" ]; 
-                    then
-                        if [ "$found_incomplete" = false ]
-                        then
-                            iteration_start=$last_iteration
-                            servers_temp+=($server)
-                            jmx_urls_temp+=(${jmx_urls[${i}]})
-                        fi
-                    fi
+                    #if [ "$last_iteration" -lt "$iteration_final" ]; 
+                    #then
+                    #    if [ "$found_incomplete" = false ]
+                    #    then
+                    #        iteration_start=$last_iteration
+                    #        servers_temp+=($server)
+                    #        jmx_urls_temp+=(${jmx_urls[${i}]})
+                    #    fi
+                    #fi
 
                 fi                
                 
@@ -109,8 +122,11 @@ if [ "$resume" = true ]
         echo "${servers[*]}"
         echo -n "Resuming at iteration: "
         echo $iteration_start
+        echo -n "With worlds: "
+        echo "${incomplete_worlds[*]}"
 
 fi
+
 
 #echo "Copying world:${world} to server folders"
 #server_folders=($(ls -d MC/servers/*/))
@@ -156,9 +172,16 @@ ssh $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; python3 
 let "i+=1"
 done
 
+if [ "$found_incomplete" = true ]
+then
+    incomplete_command="-Wi ${incomplete_worlds[*]}"
+else
+    incomplete_command=''
+fi
+
 sleep 3
 # Run controller server
-python3 controller.py ${IPS[0]} -y ${IPS[@]:1} -s ${servers[@]} -W ${worlds[@]} -ju ${jmx_urls[@]} -w ${collect_yardstick} -c ${controlport} -m ${mcport} -i ${iterations} -is ${iteration_start} -d ${adjusted_duration}
+python3 controller.py ${IPS[0]} -y ${IPS[@]:1} -s ${servers[@]} -W ${worlds[@]} ${incomplete_command} -ju ${jmx_urls[@]} -w ${collect_yardstick} -c ${controlport} -m ${mcport} -i ${iterations} -is ${iteration_start} -d ${adjusted_duration}
 
 if [ "$resume" = false ] 
 then
