@@ -1,7 +1,7 @@
 source ./config.cfg
 
 # Comment this out if nodes not on DAS5!
-./das5_reservation.sh 2 900
+#./das5_reservation.sh 2 3600
 
 # Read list of ips. First node is chosen as MC server.
 IPS=(`< ips`)
@@ -128,15 +128,6 @@ if [ "$resume" = true ]
 fi
 
 
-#echo "Copying world:${world} to server folders"
-#server_folders=($(ls -d MC/servers/*/))
-#for server_folder in "${server_folders[@]}"
-#do
-#    rm -rf $server_folder/world
-#    cp -RT MC/worlds/${world} $server_folder/world > /dev/null
-#done
-
-
 if [ "$already_copied" = false ]
 then
     echo "Rsync to MC server node..."
@@ -153,11 +144,20 @@ else
     echo "Folders already copied to remote, skipping"
 fi
 
+# Ensure Java and python dependencies are present on each node
+echo "Ensuring dependencies installed on MC controller..."
+ssh $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; ./install_MC_dependencies.sh"
+echo "Ensuring dependencies installed on YS controllers..."
+for ip in ${IPS[@]:1}
+do 
+    ssh $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; ./install_YS_dependencies.sh"
+done
 
 # Run MC controllers through ssh
 echo -n "Activating MC controller on "
 echo ${IPS[0]}
 ssh $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; python3 mc_receive.py -c ${controlport} -m ${mcport} -d ${debug_profile} -js ${jmx_port_start} -je ${jmx_port_stop} -ram ${ram} > results/mc_receive_out.txt 2>&1 &"
+
 
 # About 1 second join time per player, adjust for this
 adjusted_duration=$(($duration + $num_players))
@@ -166,12 +166,13 @@ adjusted_duration=$(($duration + $num_players))
 i=0
 for ip in ${IPS[@]:1}
 do 
-echo -n "Activating yardstick on "
-echo $ip
-ssh $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; python3 ys_receive.py ${IPS[0]} ${num_players} -b ${bot_behaviour} -box ${bounding_box} -id ${i} -d ${adjusted_duration} -w ${collect_yardstick} -c ${controlport} -m ${mcport} > results/ys_receive_out.txt 2>&1 & "
-let "i+=1"
+    echo -n "Activating yardstick on "
+    echo $ip
+    ssh $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; python3 ys_receive.py ${IPS[0]} ${num_players} -b ${bot_behaviour} -box ${bounding_box} -id ${i} -d ${adjusted_duration} -w ${collect_yardstick} -c ${controlport} -m ${mcport} > results/ys_receive_out.txt 2>&1 & "
+    let "i+=1"
 done
 
+# Used when resuming to skip worlds in first iteration
 if [ "$found_incomplete" = true ]
 then
     incomplete_command="-Wi ${incomplete_worlds[*]}"
@@ -195,8 +196,7 @@ rsync -rt -e "ssh ${mc_key_command}" ${username_command}${IPS[0]}:$mclocation/re
 
 for ip in ${IPS[@]:1}
 do 
-echo -n "Collecting yardstick results from "
-echo $ip
-rsync -rt -e "ssh ${ys_key_command}" ${username_command}$ip:$yardsticklocation/results/ results/ > /dev/null
-
+    echo -n "Collecting yardstick results from "
+    echo $ip
+    rsync -rt -e "ssh ${ys_key_command}" ${username_command}$ip:$yardsticklocation/results/ results/ > /dev/null
 done

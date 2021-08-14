@@ -49,7 +49,7 @@ def experimentLoop():
 
                 logging.info("         Initializing MC")
                 sendMC("initialize", True)
-                time.sleep(35) # wait for server to start
+                time.sleep(60) # wait for server to start
 
                 logging.info("         Starting YS")
                 sendYS("connect", True) 
