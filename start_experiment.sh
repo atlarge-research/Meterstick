@@ -24,6 +24,29 @@ then
     username_command="${username}@"
 fi
 
+# Check for scaled workload worlds
+if [ $scale -ne 1 ];
+then
+    if [ $scale -ne 2 ] && [ $scale -ne 4 ];
+    then
+        echo "Please enter 1, 2 or 4 for workload scale."
+    else
+        echo "Using upscaled workload worlds if available..."
+        new_worlds=$@
+        for world in "${worlds[@]}"
+        do
+            if [ "$world" == "TNT" ] || [ "$world" == "FarmWorld" ] || [ "$world" == "LagMachine" ];
+            then
+                new_worlds+=($world'_x'$scale)
+            else
+                new_worlds+=($world)
+            fi
+        done
+        worlds=("${new_worlds[@]}")  
+    fi 
+fi
+
+
 # Fault tolerance functionality, retrieves partial results and resumes at cut off point
 if [ "$resume" = true ]
     then
