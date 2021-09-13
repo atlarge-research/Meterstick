@@ -1,7 +1,7 @@
 source ./config.cfg
 
 # Comment this out if nodes not on DAS5!
-#./das5_reservation.sh 2 3600
+./das5_reservation.sh 2 2500
 
 # Read list of ips. First node is chosen as MC server.
 IPS=(`< ips`)
@@ -179,7 +179,14 @@ done
 # Run MC controllers through ssh
 echo -n "Activating MC controller on "
 echo ${IPS[0]}
-ssh $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; python3 mc_receive.py -c ${controlport} -m ${mcport} -d ${debug_profile} -js ${jmx_port_start} -je ${jmx_port_stop} -ram ${ram} > results/mc_receive_out.txt 2>&1 &"
+
+# Override irrelevant cpu affinity variable
+if [ "$use_cpu_affinity" = false ]
+then
+    cpu_affinity=0xFFFFFFFF
+fi
+
+ssh $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; python3 mc_receive.py -c ${controlport} -m ${mcport} -d ${debug_profile} -ca ${cpu_affinity} -js ${jmx_port_start} -je ${jmx_port_stop} -ram ${ram} > results/mc_receive_out.txt 2>&1 &"
 
 
 # About 1 second join time per player, adjust for this

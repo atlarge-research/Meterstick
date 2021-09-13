@@ -53,7 +53,7 @@ class MC_Receive:
     # Start server in correct working directory
     def startServer(self):
         currentDirectory = os.getcwd()
-        mc_process = subprocess.Popen(f'cd {self.server_dir.name} ; ./run.sh {currentDirectory}/{self.results_dir}/{self.iterationCounter}/{self.world_name}/mc_out.txt -{self.args.ram} {self.current_jmx_port}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+        mc_process = subprocess.Popen(f'cd {self.server_dir.name} ; ./run.sh {currentDirectory}/{self.results_dir}/{self.iterationCounter}/{self.world_name}/mc_out.txt -{self.args.ram} {self.current_jmx_port} {self.args.cpu_affinity}', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
         mc_process_out, mc_process_err = mc_process.communicate()
         self.mc_pid = int(mc_process_out.decode())
         self.log(f"MCPID is {self.mc_pid}")
@@ -119,13 +119,10 @@ class MC_Receive:
             self.sendRCON("debug stop")
             subprocess.check_output(f'cp -Tr {self.server_dir.name}/debug {self.results_dir}/{self.iterationCounter}/{self.world_name}',shell=True)
 
-        res1 = self.check_pid(self.sys_pid)
-        if res1:
-            os.killpg(os.getpgid(self.sys_pid), signal.SIGTERM)
-        res2 = self.check_pid(self.jmx_pid)
-        if res2:
+        res = self.check_pid(self.jmx_pid)
+        if res:
             os.killpg(os.getpgid(self.jmx_pid), signal.SIGTERM)
-        return res1 and res2
+        return res
 
     # 'pings' a pid for existence
     def check_pid(self, pid):        
@@ -210,7 +207,7 @@ class MC_Receive:
                 elif word == "log_stop":
                     self.log("Stopping metric collection...")
                     if not self.stopMetricSampling():
-                        connection.send(b"err: sys metrics not running")
+                        connection.send(b"err: jmx metrics not running")
                     else:
                         connection.send(b"ok")
                 elif word == "stop_server":
@@ -238,6 +235,7 @@ if __name__ == "__main__":
     parser.add_argument('-controlport', '-c', type=int, default=25555)
     parser.add_argument('-mcport', '-m',  type=int, default=25565)
     parser.add_argument('-debug_profile', '-d', type=int, default=0)
+    parser.add_argument('-cpu_affinity', '-ca', default="0xFFFFFFFF")
     parser.add_argument('-jmxport_start', '-js',  type=int, default=25585)
     parser.add_argument('-jmxport_end', '-je',  type=int, default=25635)
     parser.add_argument('-ram')
