@@ -1,7 +1,7 @@
 source ./config.cfg
 
 # Comment this out if nodes not on DAS5!
-./das5_reservation.sh 2 2500
+#./das5_reservation.sh 2 2500
 
 # Read list of ips. First node is chosen as MC server.
 IPS=(`< ips`)
