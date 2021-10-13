@@ -8,7 +8,7 @@ import time
 import socket
 import logging
 
-# Yardstick control server, receives control operations from controller server during experiment. 
+# Yardstick control server, receives control operations from controller server during experiment.
 
 logging.basicConfig(filename='results/ys_receive.log', filemode='w',level=logging.DEBUG)
 
@@ -35,7 +35,7 @@ class YS_Receive:
         os.mkdir(self.results_dir)
 
     # Add configuration to yardstick.toml
-    def initializeYardstick(self): 
+    def initializeYardstick(self):
         subprocess.check_output(f'cp base_yardstick.toml yardstick.toml', shell=True)
         file1 = open("yardstick.toml", "a")  # append mode
         file1.write(f"\nduration = {self.args.duration}\nbots = {self.args.num_players}\nboxDiameter={self.args.bounding_box}\n[game]\nhost = \"{self.args.server_ip}\"\nport = {self.args.mcport}\n")
@@ -92,7 +92,7 @@ class YS_Receive:
                     world_name = word[10:]
                     self.log(f"Setting world to {world_name}")
                     self.world_name = world_name
-                    
+
                     os.mkdir(f'./{self.results_dir}/{self.iterationCounter}/{self.world_name}')
 
                     connection.send(b"ok")
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument('-duration', '-d', type=int, default=60)
     parser.add_argument('-controlport', '-c', type=int, default=25555)
     parser.add_argument('-mcport', '-m', type=int, default=25565)
-   
+
     ys_receive = YS_Receive(parser.parse_args())
     ys_receive.initializeYardstick()
     ys_receive.listenToSocket()

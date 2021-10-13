@@ -52,7 +52,7 @@ def experimentLoop():
                 time.sleep(60) # wait for server to start
 
                 logging.info("         Starting YS")
-                sendYS("connect", True) 
+                sendYS("connect", True)
 
                 logging.info("         Starting logging")
                 sendMC("log_start", True)
@@ -72,14 +72,14 @@ def experimentLoop():
 
                 logging.info("         Stopping logging")
                 sendMC("log_stop", True)
-            
+
                 if args.workload:
                     logging.info("         Converting Yardstick metrics")
                     sendYS("convert", True)
 
                 logging.info("         Stopping MC")
                 sendMC("stop_server", True)
-                
+
                 time.sleep(5) # wait for port to (hopefully) be free again
 
             iterationCounter += 1
@@ -89,16 +89,16 @@ def experimentLoop():
 # Connects to the MC node
 def connectMC():
     MC_socket.settimeout(30)
-    logging.info("Connecting MC socket to %s", args.server_node_ip)
-    MC_socket.connect((args.server_node_ip, args.controlport))
-    
+    logging.info("Connecting MC socket to %s:%s", args.server_node_ip,args.controlport_mc)
+    MC_socket.connect((args.server_node_ip, args.controlport_mc))
+
 # Connects to all YS nodes
 def connectYS():
     for ip in args.yardstick_ips:
         logging.info("Connecting YS socket to %s", ip)
         ys_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         ys_sock.settimeout(30) # Log timeout for yardstick metric processing
-        ys_sock.connect((ip, args.controlport))
+        ys_sock.connect((ip, args.controlport_ys))
         YS_sockets.append(ys_sock)
 
 # Disconnects from all nodes
@@ -118,7 +118,7 @@ def sendMC(to_send, req_ack):
         logging.info(e)
         MC_socket.close()
 
-    
+
 # Send message to all nodes running YS. Returns true if ack requested and received from all yardstick nodes
 def sendYS(to_send, req_ack):
     response = []
@@ -142,7 +142,7 @@ def handleAck(listen_sock):
         res = response.decode()
         if res == "":
             logging.info("Ack requested but connection has been closed")
-            return False 
+            return False
         if res[:5] == b"err: ":
             logging.info("Ack returned error: %s", res[5:])
             return False
@@ -164,7 +164,8 @@ if __name__ == "__main__":
     parser.add_argument('-incomplete_worlds', '-Wi', nargs='+', required=False)
     parser.add_argument('-jmx_urls', '-ju', nargs='+', required=True)
     parser.add_argument('-workload', '-w', default=True)
-    parser.add_argument('-controlport', '-c',  type=int, default=25555)
+    parser.add_argument('-controlport_mc', '-cm',  type=int, default=25555)
+    parser.add_argument('-controlport_ys', '-cy',  type=int, default=25554)
     parser.add_argument('-mcport', '-m',  type=int, default=25565)
     parser.add_argument('-iterations', '-i', type=int,  default=10)
     parser.add_argument('-iteration_start', '-is', type=int,  default=0)

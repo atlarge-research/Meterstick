@@ -5,10 +5,23 @@ source ./config.cfg
 
 # Read list of ips. First node is chosen as MC server.
 IPS=(`< ips`)
-if [ ${#IPS[@]} -lt 2 ]
-    then
-        echo "Must provide at least two ips in ips file."
-        exit
+remotecolon=":"
+remotecommand="ssh"
+remoteand="&"
+if [ "$local" = false ]
+then
+  if [ ${#IPS[@]} -lt 2 ]
+      then
+          echo "Must provide at least two ips in ips file."
+          exit
+  fi
+  unset remoteand
+else
+  unset IPS
+  remotecolon=""
+  use_keys=false
+  remotecommand="bash -c"
+  hostvar=$(hostname)
 fi
 
 iteration_start=0
@@ -42,8 +55,8 @@ then
                 new_worlds+=($world)
             fi
         done
-        worlds=("${new_worlds[@]}")  
-    fi 
+        worlds=("${new_worlds[@]}")
+    fi
 fi
 
 
@@ -53,24 +66,24 @@ if [ "$resume" = true ]
         echo "Attempting resuming experiment..."
 
         if [ "$resume_from_results" = false ]
-        then 
+        then
             rm -rf results
             # Collect results
             echo -n "Collecting partial MC results from "
             echo ${IPS[0]}
-            rsync -rt -e "ssh ${mc_key_command}" ${username_command}${IPS[0]}:$mclocation/results/ results/ > /dev/null
+            rsync -rt -e "ssh ${mc_key_command}" ${username_command}${IPS[0]}${remotecolon}${mclocation}/results/ results/ > /dev/null
 
             for ip in ${IPS[@]:1}
-            do 
+            do
             echo -n "Collecting partial yardstick results from "
             echo $ip
-            rsync -rt -e "ssh ${ys_key_command}" ${username_command}$ip:$yardsticklocation/results/ results/ > /dev/null
+            rsync -rt -e "ssh ${ys_key_command}" ${username_command}$ip${remotecolon}${yardsticklocation}/results/ results/ > /dev/null
 
             done
         else
             echo "Using already collected partial results"
         fi
-        
+
 
         servers_temp=$@
         jmx_urls_temp=$@
@@ -82,10 +95,10 @@ if [ "$resume" = true ]
         for server in "${servers[@]}"
         do
             curr_dir="results/${server}"
-            if [[ -d "${curr_dir}" ]] 
+            if [[ -d "${curr_dir}" ]]
             then
                 # Only find the lowest incomplete iteration
-                if [ "$iteration_start" -eq 0 ]; 
+                if [ "$iteration_start" -eq 0 ];
                 then
 
                     last_iteration=0
@@ -95,7 +108,7 @@ if [ "$resume" = true ]
                         last_iteration=$ite
                         curr_iter_dir="${curr_dir}/${ite}"
                         incomplete_worlds=$@
-                        
+
                         # Check if all worlds complete for this iteration
                         for world in "${worlds[@]}"
                         do
@@ -109,17 +122,17 @@ if [ "$resume" = true ]
                         # Check if all worlds in this iteration are complete
                         if [ "${#incomplete_worlds[@]}" -gt "1" ];
                         then
-                            # Server iterations not finished                        
+                            # Server iterations not finished
                             iteration_start=$ite
                             found_incomplete=true
-                        
+
                             servers_temp+=($server)
                             jmx_urls_temp+=(${jmx_urls[${i}]})
                             break
                         fi
                     done
 
-                    #if [ "$last_iteration" -lt "$iteration_final" ]; 
+                    #if [ "$last_iteration" -lt "$iteration_final" ];
                     #then
                     #    if [ "$found_incomplete" = false ]
                     #    then
@@ -129,17 +142,17 @@ if [ "$resume" = true ]
                     #    fi
                     #fi
 
-                fi                
-                
-            else 
+                fi
+
+            else
                 # Server was not run yet
                 servers_temp+=($server)
                 jmx_urls_temp+=(${jmx_urls[${i}]})
-                
+
             fi
             let "i=i+1"
         done
-        servers=("${servers_temp[@]}")  
+        servers=("${servers_temp[@]}")
         jmx_urls=("${jmx_urls_temp[@]}")
         echo -n "Resuming for servers: "
         echo "${servers[*]}"
@@ -154,31 +167,38 @@ fi
 if [ "$already_copied" = false ]
 then
     echo "Rsync to MC server node..."
-    rsync -rt --del -e "ssh ${mc_key_command}" MC/ ${username_command}${IPS[0]}:$mclocation > /dev/null
+    rsync -rt --del -e "ssh ${mc_key_command}" MC/ ${username_command}${IPS[0]}${remotecolon}${mclocation} > /dev/null
 
     echo "Rsync to yardstick nodes..."
     for ip in ${IPS[@]:1}
-    do 
-        # Assumes all yardstick nodes have the same file layout. 
-        rsync -rt --del -e "ssh ${ys_key_command}" yardstick/ ${username_command}$ip:$yardsticklocation > /dev/null
+    do
+      # Assumes all yardstick nodes have the same file layout.
+      rsync -rt --del -e "ssh ${ys_key_command}" yardstick/ ${username_command}$ip${remotecolon}${yardsticklocation} > /dev/null
 
     done
-else    
+    if [ "$local" = true ]
+    then
+      rsync -rt --del -e "ssh ${ys_key_command}" yardstick/ ${username_command}$ip${remotecolon}${yardsticklocation} > /dev/null
+    fi
+else
     echo "Folders already copied to remote, skipping"
 fi
 
 # Ensure Java and python dependencies are present on each node
 echo "Ensuring dependencies installed on MC controller..."
-ssh $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; ./install_MC_dependencies.sh"
+$remotecommand $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; ./install_MC_dependencies.sh"
 echo "Ensuring dependencies installed on YS controllers..."
 for ip in ${IPS[@]:1}
-do 
-    ssh $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; ./install_YS_dependencies.sh"
+do
+    $remotecommand $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; ./install_YS_dependencies.sh"
 done
+if [ "$local" = true ]
+then
+  $remotecommand $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; ./install_YS_dependencies.sh"
+fi
 
 # Run MC controllers through ssh
-echo -n "Activating MC controller on "
-echo ${IPS[0]}
+echo "Activating MC controller "
 
 # Override irrelevant cpu affinity variable
 if [ "$use_cpu_affinity" = false ]
@@ -186,7 +206,7 @@ then
     cpu_affinity=0xFFFFFFFF
 fi
 
-ssh $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; python3 mc_receive.py -c ${controlport} -m ${mcport} -d ${debug_profile} -ca ${cpu_affinity} -js ${jmx_port_start} -je ${jmx_port_stop} -ram ${ram} > results/mc_receive_out.txt 2>&1 &"
+$remotecommand $mc_key_command ${username_command}${IPS[0]} "cd ${mclocation} ; python3 mc_receive.py -c ${controlportmc} -m ${mcport} -d ${debug_profile} -ca ${cpu_affinity} -js ${jmx_port_start} -je ${jmx_port_stop} -ram ${ram} > results/mc_receive_out.txt 2>&1 &" $remoteand
 
 
 # About 1 second join time per player, adjust for this
@@ -195,12 +215,19 @@ adjusted_duration=$(($duration + $num_players))
 # Run yardstick controllers through ssh, with numerical id to differentiate them
 i=0
 for ip in ${IPS[@]:1}
-do 
+do
     echo -n "Activating yardstick on "
     echo $ip
-    ssh $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; python3 ys_receive.py ${IPS[0]} ${num_players} -b ${bot_behaviour} -box ${bounding_box} -id ${i} -d ${adjusted_duration} -w ${collect_yardstick} -c ${controlport} -m ${mcport} > results/ys_receive_out.txt 2>&1 & "
+    $remotecommand $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; python3 ys_receive.py ${IPS[0]} ${num_players} -b ${bot_behaviour} -box ${bounding_box} -id ${i} -d ${adjusted_duration} -w ${collect_yardstick} -c ${controlportys} -m ${mcport} > results/ys_receive_out.txt 2>&1 & " $remoteand
     let "i+=1"
 done
+
+if [ "$local" = true ]
+then
+  echo "Activating yardstick locally"
+  $remotecommand $ys_key_command ${username_command}${ip} "cd ${yardsticklocation} ; python3 ys_receive.py ${hostvar} ${num_players} -b ${bot_behaviour} -box ${bounding_box} -id ${i} -d ${adjusted_duration} -w ${collect_yardstick} -c ${controlportys} -m ${mcport} > results/ys_receive_out.txt 2>&1 & " $remoteand
+  let "i+=1"
+fi
 
 # Used when resuming to skip worlds in first iteration
 if [ "$found_incomplete" = true ]
@@ -211,22 +238,32 @@ else
 fi
 
 sleep 3
-# Run controller server
-python3 controller.py ${IPS[0]} -y ${IPS[@]:1} -s ${servers[@]} -W ${worlds[@]} ${incomplete_command} -ju ${jmx_urls[@]} -w ${collect_yardstick} -c ${controlport} -m ${mcport} -i ${iterations} -is ${iteration_start} -d ${adjusted_duration}
+if [ "$local" = true ]
+then
+  python3 controller.py ${hostvar} -y ${hostvar} -s ${servers[@]} -W ${worlds[@]} ${incomplete_command} -ju ${jmx_urls[@]} -w ${collect_yardstick} -cm ${controlportmc} -cy ${controlportys} -m ${mcport} -i ${iterations} -is ${iteration_start} -d ${adjusted_duration}
+else
+  # Run controller server
+  python3 controller.py ${IPS[0]} -y ${IPS[@]:1} -s ${servers[@]} -W ${worlds[@]} ${incomplete_command} -ju ${jmx_urls[@]} -w ${collect_yardstick} -cm ${controlportmc} -cy ${controlportys} -m ${mcport} -i ${iterations} -is ${iteration_start} -d ${adjusted_duration}
+fi
 
-if [ "$resume" = false ] 
+if [ "$resume" = false ]
 then
     rm -rf results
 fi
 
 # Collect results
-echo -n "Collecting MC results from "
-echo ${IPS[0]}
-rsync -rt -e "ssh ${mc_key_command}" ${username_command}${IPS[0]}:$mclocation/results/ results/ > /dev/null
+echo "Collecting MC results"
+rsync -rt -e "ssh ${mc_key_command}" ${username_command}${IPS[0]}${remotecolon}${mclocation}/results/ results/ > /dev/null
 
 for ip in ${IPS[@]:1}
-do 
+do
     echo -n "Collecting yardstick results from "
     echo $ip
-    rsync -rt -e "ssh ${ys_key_command}" ${username_command}$ip:$yardsticklocation/results/ results/ > /dev/null
+    rsync -rt -e "ssh ${ys_key_command}" ${username_command}$ip${remotecolon}${yardsticklocation}/results/ results/ > /dev/null
 done
+
+if [ "$local" = true ]
+then
+  echo "Collecting yardstick results "
+  rsync -rt -e "ssh ${ys_key_command}" ${remotecolon}${yardsticklocation}/results/ results/ > /dev/null
+fi
