@@ -267,3 +267,6 @@ then
   echo "Collecting yardstick results "
   rsync -rt -e "ssh ${ys_key_command}" ${remotecolon}${yardsticklocation}/results/ results/ > /dev/null
 fi
+
+echo "Running plotting tools"
+./plot_results.sh ${num_cores} ${debug_profile} ${iterations} ${num_players}
