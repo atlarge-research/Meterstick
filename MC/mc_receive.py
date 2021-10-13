@@ -206,10 +206,8 @@ class MC_Receive:
                     
                 elif word == "log_stop":
                     self.log("Stopping metric collection...")
-                    if not self.stopMetricSampling():
-                        connection.send(b"err: jmx metrics not running")
-                    else:
-                        connection.send(b"ok")
+                    self.stopMetricSampling():
+                    connection.send(b"ok")
                 elif word == "stop_server":
                     self.log("Stopping server...")
                     if not self.stopServer():
