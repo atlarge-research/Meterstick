@@ -6,8 +6,7 @@
 - Specify experiment and practical parameters in config.cfg 
 - Specify node IPs in ips
     - First IP runs MC server
-        - Node running MC must have [PSUtil](https://pypi.org/project/psutil/) and [MCRcon](https://pypi.org/project/mcrcon/) installed through pip!
-    - All following nodes run yardstick player emulation
+    - All following nodes run yardstick player emulation (more than one yardstick node currently untested)
 - Add necessary SSL keys for access to those IPs in keys folder
     - Ensure these are listed in config.cfg
 
@@ -17,9 +16,9 @@
     - Change servers var in config.cfg
     - Specify jmx_url in config.cfg
         - If unknown, check with jconsole or similar tool
-- Add the run.sh script to the server folder.
-    - If necessary, change the name of the jar file it runs.
-- Ensure the server.properties file allows offline connections and RCON support.
+    - Add the run.sh script to the server folder.
+        - If necessary, change the name of the jar file it runs.
+    - Ensure the server.properties file allows offline connections and RCON support.
 
 ### Specifying Worlds
 - Copy world folder MC/worlds
@@ -30,8 +29,7 @@
     - Total runtime in seconds will be around (duration + 45) * iterations * number of servers * number of worlds
 
 ### Plotting
-- After collecting results, run the python files in the plotting_tools folder
-    - Multi plot may require renaming results folders and moving the plotting file
+- After collecting results to the results/ directory, plotting scripts are run automatically. 
 
 ### Tools used
 - See [this link](https://github.com/atlarge-research/yardstick/commit/066a2b258a6c6f9c333a386751154d05c763b6d4) for relevant branch of the Yardstick player emulation tool 
